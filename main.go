@@ -7,6 +7,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strconv"
+	"time"
 
 	"golang.org/x/net/publicsuffix"
 )
@@ -34,14 +35,19 @@ func main() {
 	}
 	fmt.Println("Logged in")
 
-	count, err := getOrderCount(client, 9940500, 10000001)
+	time := time.Now().Unix()
+	estimate := int(0.0459291*float64(time) - 60679590.20236)
+	fmt.Printf("%d estimated orders\n", estimate)
+
+	count, err := getOrderCount(client, estimate-10000, estimate+10000)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("%d total orders\n", count)
 }
 
-func getOrderCount(client http.Client, min, max int) (int, error) {
+func getOrderCount(client http.Client, minID, maxID int) (int, error) {
+	min, max := minID, maxID
 	var id int
 	for {
 		id = (max-min)/2 + min
@@ -53,11 +59,17 @@ func getOrderCount(client http.Client, min, max int) (int, error) {
 		if exists {
 			min = id + 1
 			if min > max {
+				if max == maxID {
+					return getOrderCount(client, maxID+1, maxID+20000)
+				}
 				return id, nil
 			}
 		} else {
 			max = id - 1
 			if max < min {
+				if min == minID {
+					return getOrderCount(client, minID-20000, minID-1)
+				}
 				return id - 1, nil
 			}
 		}
