@@ -37,7 +37,7 @@ func main() {
 	client := createClient("USERNAME", "PASSWORD")
 
 	t := time.Now()
-	estimate := int(0.0459291*float64(t.Unix()) - 60679590.20236)
+	estimate := int(0.0459291*float64(t.Add(time.Duration(2)*time.Hour).Unix()) - 60679590.20236)
 	fmt.Printf("%s  %d  estimated\n", t.Format(timeFormat), estimate)
 
 	o, err := getOrderRange(client, estimate-10000, estimate+10000)
