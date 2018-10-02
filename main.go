@@ -13,9 +13,6 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-// https://gist.github.com/varver/f327ef9087ebf76aa4c4
-// https://stackoverflow.com/questions/16784419/in-golang-how-to-determine-the-final-url-after-a-series-of-redirects
-
 var timeFormat = "2006/01/02 15:04:05"
 
 type order struct {
@@ -24,15 +21,36 @@ type order struct {
 }
 
 func main() {
-	delayStr := "5s"
+	goal := 9999999
 	if len(os.Args) >= 2 {
-		delayStr = os.Args[1]
+		g, err := strconv.Atoi(os.Args[1])
+		if err != nil {
+			log.Fatal(err)
+		}
+		goal = g
+	}
+
+	delayStr := "5s"
+	if len(os.Args) >= 3 {
+		delayStr = os.Args[2]
 	}
 	delay, err := time.ParseDuration(delayStr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s query delay\n", delay.String())
+
+	averageCount := 50
+	if len(os.Args) >= 4 {
+		c, err := strconv.Atoi(os.Args[3])
+		if err != nil {
+			log.Fatal(err)
+		}
+		averageCount = c
+	}
+
+	fmt.Printf("Goal: %d\n", goal)
+	fmt.Printf("Query delay: %s\n", delay.String())
+	fmt.Printf("Orders per average: %d\n", averageCount)
 
 	client := createClient("USERNAME", "PASSWORD")
 
@@ -55,7 +73,7 @@ func main() {
 			log.Fatal(err)
 		}
 		if exist {
-			orders = addOrder(orders, order{id, t})
+			orders = addOrder(orders, order{id, t}, goal, averageCount)
 			id++
 			continue
 		}
@@ -85,19 +103,22 @@ func createClient(username, password string) http.Client {
 	return client
 }
 
-func addOrder(orders []order, o order) []order {
+func addOrder(orders []order, o order, goal, averageCount int) []order {
 	orders = append(orders, o)
 	diff := o.time.Sub(orders[len(orders)-2].time)
-	count := 25
-	if len(orders) < count {
-		count = len(orders)
+	if len(orders) < averageCount {
+		averageCount = len(orders)
 	}
-	avg := float64(o.time.Sub(orders[len(orders)-count].time).Nanoseconds()) / float64(count-1)
-	fmt.Printf("%s  %d  %-10s  %s\n",
+	avg := float64(o.time.Sub(orders[len(orders)-averageCount].time).Nanoseconds()) / float64(averageCount-1)
+	goalDuration := time.Duration(avg*float64(goal-o.id)) * time.Nanosecond
+	goalTime := o.time.Add(goalDuration)
+	fmt.Printf("%s  %d  %-10s  %-10s  %s  %s\n",
 		o.time.Format(timeFormat),
 		o.id,
 		diff.Round(time.Millisecond),
-		(time.Duration(avg) * time.Nanosecond).Round(time.Millisecond))
+		(time.Duration(avg) * time.Nanosecond).Round(time.Millisecond),
+		goalTime.Format(timeFormat),
+		goalDuration.Round(time.Millisecond))
 	return orders
 }
 
