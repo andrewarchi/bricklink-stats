@@ -48,9 +48,19 @@ func main() {
 		averageCount = c
 	}
 
+	warnCount := 100
+	if len(os.Args) >= 5 {
+		c, err := strconv.Atoi(os.Args[4])
+		if err != nil {
+			log.Fatal(err)
+		}
+		warnCount = c
+	}
+
 	fmt.Printf("Goal: %d\n", goal)
 	fmt.Printf("Query delay: %s\n", delay.String())
 	fmt.Printf("Orders per average: %d\n", averageCount)
+	fmt.Printf("Warning beeps start: %d\n", warnCount)
 
 	client := createClient("USERNAME", "PASSWORD")
 
@@ -73,7 +83,7 @@ func main() {
 			log.Fatal(err)
 		}
 		if exist {
-			orders = addOrder(orders, order{id, t}, goal, averageCount)
+			orders = addOrder(orders, order{id, t}, goal, averageCount, warnCount)
 			id++
 			continue
 		}
@@ -103,7 +113,7 @@ func createClient(username, password string) http.Client {
 	return client
 }
 
-func addOrder(orders []order, o order, goal, averageCount int) []order {
+func addOrder(orders []order, o order, goal, averageCount, warnCount int) []order {
 	orders = append(orders, o)
 	diff := o.time.Sub(orders[len(orders)-2].time)
 	if len(orders) < averageCount {
@@ -119,6 +129,9 @@ func addOrder(orders []order, o order, goal, averageCount int) []order {
 		(time.Duration(avg) * time.Nanosecond).Round(time.Millisecond),
 		goalTime.Format(timeFormat),
 		goalDuration.Round(time.Millisecond))
+	if o.id >= goal-warnCount {
+		fmt.Print("\a") // Bell character
+	}
 	return orders
 }
 
